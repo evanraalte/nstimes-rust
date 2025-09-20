@@ -8,7 +8,7 @@ pub fn pick_station(query: &str) -> Result<Station, Box<dyn std::error::Error>> 
         encoded_query
     );
 
-    let ns_api_token = env::var("NS_API_TOKEN")?;
+    let ns_api_token = env::var("NS_API_TOKEN").map_err(|_| "NS_API_TOKEN not found")?;
 
     let body: String = ureq::get(url)
         .header("Cache-Control", "no-cache")

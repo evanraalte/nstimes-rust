@@ -44,7 +44,7 @@ impl From<TripRaw> for Trip {
 pub fn trips(from: Station, to: Station) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips");
 
-    let ns_api_token = env::var("NS_API_TOKEN")?;
+    let ns_api_token = env::var("NS_API_TOKEN").map_err(|_| "NS_API_TOKEN not found")?;
 
     let body: String = ureq::get(url)
         .header("Cache-Control", "no-cache")

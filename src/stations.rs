@@ -1,4 +1,4 @@
-use crate::response_models::{ApiResponse, Station};
+use crate::stations_models::{ApiResponse, Station};
 use std::env;
 
 pub fn pick_station(query: &str) -> Result<Station, Box<dyn std::error::Error>> {

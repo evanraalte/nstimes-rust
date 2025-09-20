@@ -1,8 +1,12 @@
 use clap::Parser;
 use dotenv::dotenv;
-mod response_models;
 mod stations;
+mod stations_models;
+mod trips;
+mod trips_models;
+
 use stations::pick_station;
+use trips::trips;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -26,8 +30,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let station_to = pick_station(&args.to)?;
     println!(
-        "Finding journey from {} to {}",
-        station_from.names.long, station_to.names.long
+        "Finding journey from {} ({}) to {} ({})",
+        station_from.names.long,
+        station_from.id.uic_code,
+        station_to.names.long,
+        station_to.id.uic_code
     );
+    let _ = trips(station_from, station_to);
     Ok(())
 }

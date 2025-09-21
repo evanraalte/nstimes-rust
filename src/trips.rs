@@ -10,7 +10,9 @@ pub struct Trip {
     pub track: String,
     pub cancelled: bool,
     pub departure_time: DateTime<FixedOffset>,
+    pub actual_departure_time: Option<DateTime<FixedOffset>>,
     pub arrival_time: DateTime<FixedOffset>,
+    pub actual_arrival_time: Option<DateTime<FixedOffset>>,
     pub train_type: String,
 }
 
@@ -35,7 +37,9 @@ impl From<TripRaw> for Trip {
             track,
             cancelled: leg.cancelled,
             departure_time: parse_time(leg.origin.planned_date_time),
+            actual_departure_time: leg.origin.actual_date_time.map(parse_time),
             arrival_time: parse_time(leg.destination.planned_date_time),
+            actual_arrival_time: leg.destination.actual_date_time.map(parse_time),
             train_type: leg.product.category_code,
         }
     }
@@ -43,6 +47,10 @@ impl From<TripRaw> for Trip {
 
 impl fmt::Display for Trip {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        //actual departuretime is option
+        // actual arrival time is option
+
         write!(
             f,
             "{} -> {} [{}] tr.{} {}->{} {}",

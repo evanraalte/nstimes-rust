@@ -33,6 +33,9 @@ pub struct StopRaw {
 
     #[serde(rename = "plannedDateTime")]
     pub planned_date_time: String,
+
+    #[serde(rename = "actualDateTime")]
+    pub actual_date_time: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

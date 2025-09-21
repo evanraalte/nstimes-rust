@@ -56,17 +56,31 @@ pub fn get_all_stations() -> Result<(), Box<dyn std::error::Error>> {
     }
     return Ok(());
 }
-
 pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Error>> {
+    let q = query.to_lowercase();
+
+    // 1️⃣ Exact (case-insensitive) match first
+    if let Some((name, code)) = STATIONS.iter().find(|(key, _)| key.to_lowercase() == q) {
+        return Ok(Station {
+            id: StationId {
+                uic_code: code.to_string(),
+            },
+            names: StationNames {
+                long: name.to_string(),
+            },
+        });
+    }
+
+    // 2️⃣ Fall back to case-insensitive substring matches
     let matches: Vec<&(&str, i32)> = STATIONS
         .iter()
-        .filter(|(key, _)| key.contains(query))
+        .filter(|(key, _)| key.to_lowercase().contains(&q))
         .collect();
 
     match matches.len() {
         0 => Err("❌ No stations found for your query".into()),
         1 => {
-            let (name, code) = *matches[0]; // destructure &(&str,i32) → (&str,i32)
+            let (name, code) = *matches[0];
             Ok(Station {
                 id: StationId {
                     uic_code: code.to_string(),
@@ -82,7 +96,7 @@ pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Er
                 query
             );
             for m in matches {
-                let (name, code) = *m; // destructure &(&str, i32) → (&str, i32)
+                let (name, code) = *m;
                 println!("{} - {}", code, name);
             }
             Err("⚠️ Multiple stations matched. Please refine your query.".into())

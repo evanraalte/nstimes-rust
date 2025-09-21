@@ -56,6 +56,7 @@ impl fmt::Display for Trip {
         )
     }
 }
+
 pub fn trips(from: Station, to: Station) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips");
 

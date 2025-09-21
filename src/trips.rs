@@ -1,7 +1,7 @@
 use crate::stations_models::Station;
 use crate::trips_models::{TripRaw, TripsResponse};
 use chrono::{DateTime, FixedOffset};
-use std::env;
+use std::{env, fmt};
 
 #[derive(Debug)]
 pub struct Trip {
@@ -41,6 +41,21 @@ impl From<TripRaw> for Trip {
     }
 }
 
+impl fmt::Display for Trip {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} -> {} [{}] tr.{} {}->{} {}",
+            self.origin_name,
+            self.destination_name,
+            self.train_type,
+            self.track,
+            self.departure_time.format("%H:%M"),
+            self.arrival_time.format("%H:%M"),
+            if self.cancelled { "(cancelled)" } else { "" }
+        )
+    }
+}
 pub fn trips(from: Station, to: Station) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!("https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips");
 
@@ -58,17 +73,8 @@ pub fn trips(from: Station, to: Station) -> Result<(), Box<dyn std::error::Error
     let resp: TripsResponse = serde_json::from_str(&body)?;
     let trips: Vec<Trip> = resp.trips.into_iter().map(Trip::from).collect();
 
-    for t in trips {
-        println!(
-            "{} -> {} [{}] tr.{} {}->{} {}",
-            t.origin_name,
-            t.destination_name,
-            t.train_type,
-            t.track,
-            t.departure_time.format("%H:%M"),
-            t.arrival_time.format("%H:%M"),
-            if t.cancelled { "(cancelled)" } else { "" }
-        );
+    for t in &trips {
+        println!("{}", t);
     }
     Ok(())
 }

@@ -84,9 +84,15 @@ impl fmt::Display for Trip {
             })
             .unwrap_or_default();
 
+        let status_msg = if self.status == "NORMAL" {
+            ""
+        } else {
+            &format!("({})", self.status)
+        };
+
         // 4️⃣ Final formatted string
         let mut line = format!(
-            "{} -> {} [{}] tr.{} {}{} -> {}{} ({})",
+            "{} -> {} [{}] tr.{} {}{} -> {}{} {}",
             self.origin_name,
             self.destination_name,
             self.train_type,
@@ -95,7 +101,7 @@ impl fmt::Display for Trip {
             dep_delay.red(),
             arr,
             arr_delay.red(),
-            self.status,
+            status_msg,
         );
 
         if self.status == "CANCELLED" {

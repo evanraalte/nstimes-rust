@@ -8,16 +8,13 @@ pub struct TripsResponse {
 #[derive(Debug, Deserialize)]
 pub struct TripRaw {
     pub legs: Vec<LegRaw>,
+    pub status: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LegRaw {
     pub origin: StopRaw,
     pub destination: StopRaw,
-
-    #[serde(default)]
-    pub cancelled: bool,
-
     pub product: ProductRaw,
 }
 

@@ -8,7 +8,7 @@ pub struct Trip {
     pub origin_name: String,
     pub destination_name: String,
     pub track: String,
-    pub cancelled: bool,
+    pub status: String,
     pub departure_time: DateTime<FixedOffset>,
     pub actual_departure_time: Option<DateTime<FixedOffset>>,
     pub arrival_time: DateTime<FixedOffset>,
@@ -35,7 +35,7 @@ impl From<TripRaw> for Trip {
             origin_name: leg.origin.name,
             destination_name: leg.destination.name,
             track,
-            cancelled: leg.cancelled,
+            status: raw.status,
             departure_time: parse_time(leg.origin.planned_date_time),
             actual_departure_time: leg.origin.actual_date_time.map(parse_time),
             arrival_time: parse_time(leg.destination.planned_date_time),
@@ -86,7 +86,7 @@ impl fmt::Display for Trip {
         // 4️⃣ Final formatted string
         write!(
             f,
-            "{} -> {} [{}] tr.{} {}{} -> {}{} {}",
+            "{} -> {} [{}] tr.{} {}{} -> {}{} ({})",
             self.origin_name,
             self.destination_name,
             self.train_type,
@@ -95,7 +95,7 @@ impl fmt::Display for Trip {
             dep_delay,
             arr,
             arr_delay,
-            if self.cancelled { "(cancelled)" } else { "" }
+            self.status,
         )
     }
 }

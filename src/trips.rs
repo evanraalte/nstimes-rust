@@ -85,8 +85,7 @@ impl fmt::Display for Trip {
             .unwrap_or_default();
 
         // 4️⃣ Final formatted string
-        write!(
-            f,
+        let mut line = format!(
             "{} -> {} [{}] tr.{} {}{} -> {}{} ({})",
             self.origin_name,
             self.destination_name,
@@ -97,7 +96,12 @@ impl fmt::Display for Trip {
             arr,
             arr_delay.red(),
             self.status,
-        )
+        );
+
+        if self.status == "CANCELLED" {
+            line = line.strikethrough().color(Color::BrightBlack).to_string();
+        }
+        write!(f, "{}", line)
     }
 }
 

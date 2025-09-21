@@ -47,19 +47,54 @@ impl From<TripRaw> for Trip {
 
 impl fmt::Display for Trip {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // 1️⃣ Always print the planned (scheduled) times
+        let dep = self.departure_time.format("%H:%M").to_string();
+        let arr = self.arrival_time.format("%H:%M").to_string();
 
-        //actual departuretime is option
-        // actual arrival time is option
+        // 2️⃣ Departure delay (only if actual departure exists)
+        let dep_delay = self
+            .actual_departure_time
+            .as_ref() // borrow Option<&DateTime>
+            .map(|actual| {
+                // runs only if Some(actual)
+                let diff = actual.signed_duration_since(self.departure_time);
+                let minutes = diff.num_minutes();
+                if minutes > 0 {
+                    // only show if late
+                    format!("+{}", minutes)
+                } else {
+                    String::new()
+                }
+            })
+            .unwrap_or_default(); // if None → ""
 
+        // 3️⃣ Arrival delay (same logic)
+        let arr_delay = self
+            .actual_arrival_time
+            .as_ref()
+            .map(|actual| {
+                let diff = actual.signed_duration_since(self.arrival_time);
+                let minutes = diff.num_minutes();
+                if minutes > 0 {
+                    format!("+{}", minutes)
+                } else {
+                    String::new()
+                }
+            })
+            .unwrap_or_default();
+
+        // 4️⃣ Final formatted string
         write!(
             f,
-            "{} -> {} [{}] tr.{} {}->{} {}",
+            "{} -> {} [{}] tr.{} {}{} -> {}{} {}",
             self.origin_name,
             self.destination_name,
             self.train_type,
             self.track,
-            self.departure_time.format("%H:%M"),
-            self.arrival_time.format("%H:%M"),
+            dep,
+            dep_delay,
+            arr,
+            arr_delay,
             if self.cancelled { "(cancelled)" } else { "" }
         )
     }

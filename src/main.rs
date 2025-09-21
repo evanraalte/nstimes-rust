@@ -1,18 +1,20 @@
 use clap::Parser;
 use dotenv::dotenv;
+mod constants;
 mod stations;
 mod stations_models;
 mod trips;
 mod trips_models;
 
-use stations::pick_station;
+use stations::pick_station_local;
 use trips::trips;
 
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
-    /// Station name to search for
+    /// Start station name to search for
     from: String,
+    /// Destination station name to search for
     to: String,
 }
 
@@ -26,9 +28,8 @@ fn main() {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let args = Args::parse();
-    let station_from = pick_station(&args.from)?;
-
-    let station_to = pick_station(&args.to)?;
+    let station_from = pick_station_local(&args.from)?;
+    let station_to = pick_station_local(&args.to)?;
     println!(
         "Finding journey from {} ({}) to {} ({})",
         station_from.names.long,

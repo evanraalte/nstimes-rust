@@ -1,6 +1,7 @@
 use crate::stations_models::Station;
 use crate::trips_models::{TripRaw, TripsResponse};
 use chrono::{DateTime, FixedOffset};
+use colored::*;
 use std::{env, fmt};
 
 #[derive(Debug)]
@@ -92,9 +93,9 @@ impl fmt::Display for Trip {
             self.train_type,
             self.track,
             dep,
-            dep_delay,
+            dep_delay.red(),
             arr,
-            arr_delay,
+            arr_delay.red(),
             self.status,
         )
     }

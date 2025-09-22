@@ -31,12 +31,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let station_from = pick_station_local(&args.from)?;
     let station_to = pick_station_local(&args.to)?;
     println!(
-        "Finding journey from {} ({}) to {} ({})",
-        station_from.names.long,
-        station_from.id.uic_code,
-        station_to.names.long,
-        station_to.id.uic_code
+        "Finding journey from {} to {}",
+        station_from.names.long, station_to.names.long,
     );
-    let _ = trips(station_from, station_to);
+    let _ = trips(station_from, station_to)?;
     Ok(())
 }

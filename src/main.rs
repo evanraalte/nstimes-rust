@@ -1,10 +1,9 @@
-use clap::Parser;
-use dotenv::dotenv;
 mod constants;
 mod stations;
-mod stations_models;
 mod trips;
-mod trips_models;
+
+use clap::Parser;
+use dotenv::dotenv;
 
 use stations::pick_station_local;
 use trips::trips;

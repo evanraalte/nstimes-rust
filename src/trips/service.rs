@@ -1,5 +1,5 @@
-use crate::stations_models::Station;
-use crate::trips_models::{TripRaw, TripsResponse};
+use crate::stations::models::Station;
+use crate::trips::models::{TripRaw, TripsResponse};
 use chrono::{DateTime, FixedOffset};
 use colored::*;
 use std::{env, fmt};

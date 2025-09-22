@@ -1,5 +1,5 @@
 use crate::constants::STATIONS;
-use crate::stations_models::{ApiResponse, Station, StationId, StationNames};
+use crate::stations::models::{ApiResponse, Station, StationId, StationNames};
 use std::env;
 
 #[allow(dead_code)]

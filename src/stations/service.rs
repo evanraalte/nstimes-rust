@@ -2,6 +2,12 @@ use crate::constants::STATIONS;
 use crate::stations::models::{ApiResponse, Station, StationId, StationNames};
 use std::env;
 
+pub enum StationLookupResult {
+    Single(Station),
+    Multiple(Vec<(String, i32)>), // (name, uic_code)
+    None,
+}
+
 #[allow(dead_code)]
 pub fn pick_station(query: &str) -> Result<Station, Box<dyn std::error::Error>> {
     let encoded_query = urlencoding::encode(query);
@@ -56,12 +62,12 @@ pub fn get_all_stations() -> Result<(), Box<dyn std::error::Error>> {
     }
     return Ok(());
 }
-pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Error>> {
+pub fn lookup_station_local(query: &str) -> StationLookupResult {
     let q = query.to_lowercase();
 
     // 1️⃣ Exact (case-insensitive) match first
     if let Some((name, code)) = STATIONS.iter().find(|(key, _)| key.to_lowercase() == q) {
-        return Ok(Station {
+        return StationLookupResult::Single(Station {
             id: StationId {
                 uic_code: code.to_string(),
             },
@@ -78,10 +84,10 @@ pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Er
         .collect();
 
     match matches.len() {
-        0 => Err("❌ No stations found for your query".into()),
+        0 => StationLookupResult::None,
         1 => {
             let (name, code) = *matches[0];
-            Ok(Station {
+            StationLookupResult::Single(Station {
                 id: StationId {
                     uic_code: code.to_string(),
                 },
@@ -91,12 +97,25 @@ pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Er
             })
         }
         _ => {
+            let match_list: Vec<(String, i32)> = matches
+                .iter()
+                .map(|(name, code)| (name.to_string(), *code))
+                .collect();
+            StationLookupResult::Multiple(match_list)
+        }
+    }
+}
+
+pub fn pick_station_local(query: &str) -> Result<Station, Box<dyn std::error::Error>> {
+    match lookup_station_local(query) {
+        StationLookupResult::Single(station) => Ok(station),
+        StationLookupResult::None => Err("❌ No stations found for your query".into()),
+        StationLookupResult::Multiple(matches) => {
             println!(
                 "Your query `{}` was ambiguous, multiple stations matched:",
                 query
             );
-            for m in matches {
-                let (name, code) = *m;
+            for (name, code) in matches {
                 println!("{} - {}", code, name);
             }
             Err("⚠️ Multiple stations matched. Please refine your query.".into())

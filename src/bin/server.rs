@@ -7,7 +7,7 @@ use axum::{
 };
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
-use nstimes::{prices, stations};
+use nstimes::{prices, stations::{self, StationLookupResult}};
 
 #[derive(Deserialize)]
 struct PriceQuery {
@@ -30,8 +30,16 @@ struct PriceResponse {
 }
 
 #[derive(Serialize)]
+struct StationMatch {
+    name: String,
+    uic_code: i32,
+}
+
+#[derive(Serialize)]
 struct ErrorResponse {
     error: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    matches: Option<Vec<StationMatch>>,
 }
 
 async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
@@ -41,32 +49,63 @@ async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
                 error: "class must be 1 or 2".to_string(),
+                matches: None,
             }),
         )
             .into_response();
     }
 
     // Lookup stations
-    let station_from = match stations::pick_station_local(&params.from) {
-        Ok(s) => s,
-        Err(e) => {
+    let station_from = match stations::lookup_station_local(&params.from) {
+        StationLookupResult::Single(s) => s,
+        StationLookupResult::None => {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse {
-                    error: format!("From station error: {}", e),
+                    error: format!("No stations found for 'from' query: {}", params.from),
+                    matches: None,
+                }),
+            )
+                .into_response();
+        }
+        StationLookupResult::Multiple(matches) => {
+            let match_list = matches
+                .into_iter()
+                .map(|(name, uic_code)| StationMatch { name, uic_code })
+                .collect();
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("Multiple stations matched for 'from' query: {}. Please refine your query.", params.from),
+                    matches: Some(match_list),
                 }),
             )
                 .into_response();
         }
     };
 
-    let station_to = match stations::pick_station_local(&params.to) {
-        Ok(s) => s,
-        Err(e) => {
+    let station_to = match stations::lookup_station_local(&params.to) {
+        StationLookupResult::Single(s) => s,
+        StationLookupResult::None => {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse {
-                    error: format!("To station error: {}", e),
+                    error: format!("No stations found for 'to' query: {}", params.to),
+                    matches: None,
+                }),
+            )
+                .into_response();
+        }
+        StationLookupResult::Multiple(matches) => {
+            let match_list = matches
+                .into_iter()
+                .map(|(name, uic_code)| StationMatch { name, uic_code })
+                .collect();
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse {
+                    error: format!("Multiple stations matched for 'to' query: {}. Please refine your query.", params.to),
+                    matches: Some(match_list),
                 }),
             )
                 .into_response();
@@ -88,6 +127,7 @@ async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
                     error: format!("Failed to fetch prices: {}", e),
+                    matches: None,
                 }),
             )
                 .into_response();
@@ -115,6 +155,7 @@ async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
             StatusCode::NOT_FOUND,
             Json(ErrorResponse {
                 error: "No prices found for this route".to_string(),
+                matches: None,
             }),
         )
             .into_response()
@@ -138,8 +179,6 @@ async fn main() {
         .unwrap();
 
     println!("🚀 Server running on http://localhost:3000");
-    println!("   GET /price?from=Amsterdam+Centraal&to=Utrecht+Centraal&class=2");
-    println!("   GET /health");
 
     axum::serve(listener, app).await.unwrap();
 }

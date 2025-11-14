@@ -119,7 +119,9 @@ The HTTP API server exposes the following endpoints:
   - `from` (required): Station name (e.g., "Amsterdam Centraal")
   - `to` (required): Station name (e.g., "Utrecht Centraal")
   - `class` (optional): Travel class, 1 or 2 (default: 2)
-- Returns: JSON with price information in cents and travel details
+- Success response: `{"from": "Amsterdam Centraal", "to": "Utrecht Centraal", "price_cents": 940, "travel_class": "2nd class"}`
+- Error response (ambiguous station): Returns error with list of matching stations for user to refine query
+  - Example: `{"error": "Multiple stations matched for 'from' query: Amsterdam. Please refine your query.", "matches": [{"name": "Amsterdam Centraal", "uic_code": 8400058}, ...]}`
 
 **GET /health**
 - Returns: Simple health check response

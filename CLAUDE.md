@@ -36,18 +36,21 @@ Get a token from the [NS API portal](https://apiportal.ns.nl/signin) by creating
 
 ### Module Structure
 
-The codebase follows a modular architecture with three main components:
+The codebase follows a modular architecture with four main components:
 
-1. **`main.rs`** - Entry point using `clap` with subcommand support. Loads environment variables and routes to the appropriate command handler. Currently supports the `trip` subcommand for querying journeys between stations.
+1. **`main.rs`** - Entry point using `clap` with subcommand support. Loads environment variables and routes commands to their respective handlers in the `commands/` module.
 
-2. **`stations/`** - Station lookup and resolution
+2. **`commands/`** - Command implementations (one file per command)
+   - `trip.rs`: Implements the `trip` command which queries journeys between two stations. Orchestrates station lookup and trip fetching.
+
+3. **`stations/`** - Station lookup and resolution
    - `models.rs`: Serde models for NS stations API responses (`Station`, `StationId`, `StationNames`)
    - `service.rs`: Station lookup logic with two modes:
      - `pick_station_local()`: Fast local lookup using the hardcoded `STATIONS` constant (preferred, used by default)
      - `pick_station()`: Live API call to NS stations endpoint (unused but available)
    - Ambiguous queries (multiple matches) are caught and displayed to the user for refinement
 
-3. **`trips/`** - Journey/trip fetching and display
+4. **`trips/`** - Journey/trip fetching and display
    - `models.rs`: Serde models for NS trips API responses (`TripsResponse`, `TripRaw`, `LegRaw`, `StopRaw`, `ProductRaw`)
    - `service.rs`:
      - `trips()` function queries the NS Reisinformatie API for journeys between two stations
@@ -55,7 +58,7 @@ The codebase follows a modular architecture with three main components:
      - Custom `Display` implementation formats trips with colored delays and strikethrough for cancelled trips
      - Only displays the first leg of each journey (direct trains)
 
-4. **`constants.rs`** - Contains `STATIONS` array with ~630 European station names mapped to UIC codes. This enables offline station lookup without API calls.
+5. **`constants.rs`** - Contains `STATIONS` array with ~630 European station names mapped to UIC codes. This enables offline station lookup without API calls.
 
 ### Key Design Decisions
 

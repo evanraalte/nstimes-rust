@@ -1,12 +1,10 @@
+mod commands;
 mod constants;
 mod stations;
 mod trips;
 
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
-
-use stations::pick_station_local;
-use trips::trips;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -38,15 +36,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Trip { from, to } => {
-            let station_from = pick_station_local(&from)?;
-            let station_to = pick_station_local(&to)?;
-            println!(
-                "Finding journey from {} to {}",
-                station_from.names.long, station_to.names.long,
-            );
-            trips(station_from, station_to)?;
-        }
+        Commands::Trip { from, to } => commands::trip::execute(&from, &to)?,
     }
 
     Ok(())

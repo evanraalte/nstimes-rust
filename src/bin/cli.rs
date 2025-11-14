@@ -1,11 +1,6 @@
-mod commands;
-mod constants;
-mod prices;
-mod stations;
-mod trips;
-
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+use nstimes::commands;
 
 #[derive(Parser)]
 #[command(author, version, about)]

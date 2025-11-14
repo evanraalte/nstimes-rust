@@ -4,31 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NSTimes is a command-line tool for querying Dutch railway (NS) travel information directly in the terminal. It fetches real-time train schedules between stations, displaying departure/arrival times, delays, track numbers, and cancellations with colored formatting.
+NSTimes is a Rust project providing Dutch railway (NS) travel information through two interfaces:
+1. **CLI tool** - Command-line interface for querying train schedules and prices in the terminal
+2. **API server** - HTTP JSON API for programmatic access to price information
+
+Both binaries share the same core library code for NS API integration.
 
 ## Essential Commands
 
 ### Development
+
+**CLI Commands:**
 ```bash
 # Run the trip command to find journeys between two stations
-cargo run trip "Den Haag C" "Amersfoort C"
+cargo run --bin cli trip "Den Haag C" "Amersfoort C"
 
 # Get price information for a trip (defaults to 2nd class, single trip)
-cargo run price "Den Haag C" "Amersfoort C"
+cargo run --bin cli price "Den Haag C" "Amersfoort C"
 
 # Get price for 1st class return trip
-cargo run price "Den Haag C" "Amersfoort C" --class 1 --return
+cargo run --bin cli price "Den Haag C" "Amersfoort C" --class 1 --return
 
-# Build optimized release binary
+# Show available commands and help
+cargo run --bin cli -- --help
+```
+
+**API Server:**
+```bash
+# Run the API server (default port 3000)
+cargo run --bin server
+
+# Query price via API
+curl "http://localhost:3000/price?from=Amsterdam+Centraal&to=Utrecht+Centraal&class=2"
+```
+
+**Building:**
+```bash
+# Build both binaries
 cargo build --release
+
+# Build only CLI
+cargo build --bin cli --release
+
+# Build only API server
+cargo build --bin server --release
 
 # Run tests (if any exist)
 cargo test
-
-# Show available commands and help
-cargo run -- --help
-cargo run trip --help
-cargo run price --help
 ```
 
 ### Environment Setup
@@ -41,11 +63,20 @@ Get a token from the [NS API portal](https://apiportal.ns.nl/signin) by creating
 
 ## Architecture
 
+### Project Structure
+
+The codebase uses a **library + multiple binaries** architecture:
+
+- **`src/lib.rs`** - Core library exposing shared modules
+- **`src/bin/cli.rs`** - CLI binary using `clap` for command-line interface
+- **`src/bin/server.rs`** - API server binary using `axum` for HTTP endpoints
+- **Shared modules** - `stations/`, `prices/`, `trips/`, `commands/`, `constants.rs` used by both binaries
+
 ### Module Structure
 
-The codebase follows a modular architecture with five main components:
+The shared library contains five main components:
 
-1. **`main.rs`** - Entry point using `clap` with subcommand support. Loads environment variables and routes commands to their respective handlers in the `commands/` module.
+1. **`lib.rs`** - Exposes all public modules for use by binaries
 
 2. **`commands/`** - Command implementations (one file per command)
    - `trip.rs`: Implements the `trip` command which queries journeys between two stations. Orchestrates station lookup and trip fetching.
@@ -79,7 +110,21 @@ The codebase follows a modular architecture with five main components:
 - **Date/time handling**: Uses `chrono` with `FixedOffset` to properly handle timezone-aware datetime strings from the NS API
 - **Display formatting**: Uses `colored` crate for terminal output with red delays and strikethrough for cancelled trains
 
-### API Integration
+### API Server Endpoints
+
+The HTTP API server exposes the following endpoints:
+
+**GET /price**
+- Query parameters:
+  - `from` (required): Station name (e.g., "Amsterdam Centraal")
+  - `to` (required): Station name (e.g., "Utrecht Centraal")
+  - `class` (optional): Travel class, 1 or 2 (default: 2)
+- Returns: JSON with price information in cents and travel details
+
+**GET /health**
+- Returns: Simple health check response
+
+### NS API Integration
 
 The app integrates with three NS API endpoints:
 1. **Stations API** (v3): `https://gateway.apiportal.ns.nl/nsapp-stations/v3` - queries stations (currently unused in favor of local lookup)

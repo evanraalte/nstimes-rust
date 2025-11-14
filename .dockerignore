@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+
+# Build artifacts
+target/
+*.json
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# CI/CD
+.github/

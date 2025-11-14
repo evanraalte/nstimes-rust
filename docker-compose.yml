@@ -1,0 +1,19 @@
+services:
+  nstimes-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nstimes-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NS_API_TOKEN=${NS_API_TOKEN}
+    # Uncomment to enable Swagger UI documentation
+    command: ["--docs"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

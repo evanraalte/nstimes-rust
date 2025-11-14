@@ -64,6 +64,50 @@ NS_API_TOKEN=your_token_here
 
 Get a token from the [NS API portal](https://apiportal.ns.nl/signin) by creating an account and generating credentials [here](https://apiportal.ns.nl/api-details#api=reisinformatie-api).
 
+### Docker Deployment
+
+**Quick start with Docker Compose:**
+```bash
+# 1. Create .env file with your NS_API_TOKEN
+cp .env.example .env
+# Edit .env and add your token
+
+# 2. Start the server
+docker compose up -d
+
+# 3. Check logs
+docker compose logs -f
+
+# 4. Stop the server
+docker compose down
+```
+
+**Enable Swagger UI documentation:**
+Edit `docker-compose.yml` and uncomment the `command: ["--docs"]` line, then restart:
+```bash
+docker compose up -d
+```
+
+**Manual Docker build:**
+```bash
+# Build the image
+docker build -t nstimes-api .
+
+# Run the container
+docker run -d \
+  --name nstimes-api \
+  -p 3000:3000 \
+  -e NS_API_TOKEN=your_token_here \
+  nstimes-api
+
+# Run with documentation enabled
+docker run -d \
+  --name nstimes-api \
+  -p 3000:3000 \
+  -e NS_API_TOKEN=your_token_here \
+  nstimes-api --docs
+```
+
 ## Architecture
 
 ### Project Structure

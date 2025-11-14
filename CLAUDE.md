@@ -256,3 +256,7 @@ The `Cargo.toml` profile is optimized for minimal binary size:
 
 GitHub Actions workflow (`release.yml`) builds cross-platform binaries (Windows, Linux musl, macOS) on release creation.
 - update the claude.md file
+
+
+### OUtstanding todo's
+- Logging in the API calls

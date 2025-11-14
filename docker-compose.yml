@@ -8,8 +8,13 @@ services:
       - "3000:3000"
     environment:
       - NS_API_TOKEN=${NS_API_TOKEN}
-    # Uncomment to enable Swagger UI documentation
-    command: ["--docs"]
+    volumes:
+      # Mount local cache directory for persistent price caching
+      - ./cache:/data
+    # Enable documentation and caching
+    # To disable docs: remove --docs
+    # To disable cache: remove --cache /data/prices.cache
+    command: ["--docs", "--cache", "/data/prices.cache"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]

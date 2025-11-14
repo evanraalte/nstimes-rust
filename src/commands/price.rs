@@ -1,3 +1,4 @@
+use crate::cache::PriceCache;
 use crate::prices::get_prices;
 use crate::stations::pick_station_local;
 use colored::*;
@@ -7,6 +8,7 @@ pub fn execute(
     to: &str,
     travel_class: Option<String>,
     is_return: bool,
+    cache: Option<&PriceCache>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let station_from = pick_station_local(from)?;
     let station_to = pick_station_local(to)?;
@@ -19,7 +21,7 @@ pub fn execute(
         station_from.names.long, station_to.names.long,
     );
 
-    let response = get_prices(&station_from, &station_to, class_param, travel_type)?;
+    let response = get_prices(&station_from, &station_to, class_param, travel_type, cache)?;
 
     if response.payload.prices.is_empty() {
         println!("No prices found for this route.");

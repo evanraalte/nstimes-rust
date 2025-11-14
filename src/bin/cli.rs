@@ -1,10 +1,15 @@
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+use nstimes::cache::PriceCache;
 use nstimes::commands;
 
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
+    /// Enable price caching with specified file path
+    #[arg(long, global = true)]
+    cache: Option<String>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -44,6 +49,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     let args = Args::parse();
 
+    // Initialize cache if --cache flag is provided
+    let cache = if let Some(cache_path) = &args.cache {
+        Some(PriceCache::new(cache_path)?)
+    } else {
+        None
+    };
+
     match args.command {
         Commands::Trip { from, to } => commands::trip::execute(&from, &to)?,
         Commands::Price {
@@ -59,7 +71,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                     "SECOND_CLASS".to_string()
                 }
             });
-            commands::price::execute(&from, &to, travel_class, r#return)?
+            commands::price::execute(&from, &to, travel_class, r#return, cache.as_ref())?
         }
     }
 

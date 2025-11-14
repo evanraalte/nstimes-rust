@@ -1,5 +1,5 @@
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Json},
     routing::get,
@@ -8,9 +8,10 @@ use axum::{
 use clap::Parser;
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use nstimes::{prices, stations::{self, StationLookupResult}};
+use nstimes::{cache::PriceCache, prices, stations::{self, StationLookupResult}};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -18,6 +19,16 @@ struct Args {
     /// Enable Swagger UI documentation at /swagger-ui
     #[arg(long)]
     docs: bool,
+
+    /// Enable price caching with specified file path
+    #[arg(long)]
+    cache: Option<String>,
+}
+
+// Application state shared across handlers
+#[derive(Clone)]
+struct AppState {
+    cache: Option<Arc<PriceCache>>,
 }
 
 #[derive(Deserialize, utoipa::IntoParams)]
@@ -82,7 +93,10 @@ struct ErrorResponse {
     ),
     tag = "prices"
 )]
-async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
+async fn get_price(
+    State(state): State<AppState>,
+    Query(params): Query<PriceQuery>,
+) -> impl IntoResponse {
     // Validate class parameter
     if params.class != 1 && params.class != 2 {
         return (
@@ -159,8 +173,16 @@ async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
         Some("SECOND_CLASS")
     };
 
-    // Fetch price
-    let response = match prices::get_prices(&station_from, &station_to, travel_class, Some("single")) {
+    // Fetch price (with cache if available)
+    let cache_ref = state.cache.as_ref().map(|arc| arc.as_ref());
+
+    let response = match prices::get_prices(
+        &station_from,
+        &station_to,
+        travel_class,
+        Some("single"),
+        cache_ref,
+    ) {
         Ok(r) => r,
         Err(e) => {
             return (
@@ -235,9 +257,28 @@ async fn main() {
     dotenv().ok();
     let args = Args::parse();
 
+    // Initialize cache if --cache flag is provided
+    let cache = if let Some(cache_path) = &args.cache {
+        match PriceCache::new(cache_path) {
+            Ok(c) => {
+                println!("💾 Cache enabled: {}", cache_path);
+                Some(Arc::new(c))
+            }
+            Err(e) => {
+                eprintln!("⚠️  Failed to initialize cache: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let state = AppState { cache };
+
     let mut app = Router::new()
         .route("/price", get(get_price))
-        .route("/health", get(health_check));
+        .route("/health", get(health_check))
+        .with_state(state);
 
     if args.docs {
         let swagger_ui = SwaggerUi::new("/docs")

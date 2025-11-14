@@ -5,15 +5,31 @@ use axum::{
     routing::get,
     Router,
 };
+use clap::Parser;
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 use nstimes::{prices, stations::{self, StationLookupResult}};
 
-#[derive(Deserialize)]
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    /// Enable Swagger UI documentation at /swagger-ui
+    #[arg(long)]
+    docs: bool,
+}
+
+#[derive(Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 struct PriceQuery {
+    /// Origin station name (e.g., "Amsterdam Centraal")
     from: String,
+    /// Destination station name (e.g., "Utrecht Centraal")
     to: String,
+    /// Travel class: 1 for first class, 2 for second class (default: 2)
     #[serde(default = "default_class")]
+    #[param(default = 2, minimum = 1, maximum = 2)]
     class: u8,
 }
 
@@ -21,27 +37,51 @@ fn default_class() -> u8 {
     2
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 struct PriceResponse {
+    /// Full name of the origin station
     from: String,
+    /// Full name of the destination station
     to: String,
+    /// Price in cents
+    #[schema(example = 940)]
     price_cents: i32,
+    /// Travel class description
+    #[schema(example = "2nd class")]
     travel_class: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 struct StationMatch {
+    /// Station name
+    #[schema(example = "Amsterdam Centraal")]
     name: String,
+    /// UIC station code
+    #[schema(example = 8400058)]
     uic_code: i32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, utoipa::ToSchema)]
 struct ErrorResponse {
+    /// Error message
     error: String,
+    /// List of matching stations (if query was ambiguous)
     #[serde(skip_serializing_if = "Option::is_none")]
     matches: Option<Vec<StationMatch>>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/price",
+    params(PriceQuery),
+    responses(
+        (status = 200, description = "Price information retrieved successfully", body = PriceResponse),
+        (status = 400, description = "Invalid input or ambiguous station name", body = ErrorResponse),
+        (status = 404, description = "No prices found for this route", body = ErrorResponse),
+        (status = 500, description = "Internal server error", body = ErrorResponse)
+    ),
+    tag = "prices"
+)]
 async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
     // Validate class parameter
     if params.class != 1 && params.class != 2 {
@@ -162,23 +202,58 @@ async fn get_price(Query(params): Query<PriceQuery>) -> impl IntoResponse {
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Service is healthy", body = inline(Object))
+    ),
+    tag = "health"
+)]
 async fn health_check() -> impl IntoResponse {
     Json(serde_json::json!({ "status": "ok" }))
 }
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(get_price, health_check),
+    components(schemas(PriceResponse, ErrorResponse, StationMatch)),
+    tags(
+        (name = "prices", description = "Train ticket price endpoints"),
+        (name = "health", description = "Health check endpoint")
+    ),
+    info(
+        title = "NSTimes API",
+        version = "0.1.0",
+        description = "Dutch railway (NS) travel information API - get train ticket prices",
+    )
+)]
+struct ApiDoc;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    let args = Args::parse();
 
-    let app = Router::new()
+    let mut app = Router::new()
         .route("/price", get(get_price))
         .route("/health", get(health_check));
+
+    if args.docs {
+        let swagger_ui = SwaggerUi::new("/docs")
+            .url("/docs/openapi.json", ApiDoc::openapi());
+        app = app.merge(swagger_ui);
+    }
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
         .await
         .unwrap();
 
     println!("🚀 Server running on http://localhost:3000");
+    if args.docs {
+        println!("   📚 Docs: http://localhost:3000/docs");
+        println!("   📄 OpenAPI spec: http://localhost:3000/docs/openapi.json");
+    }
 
     axum::serve(listener, app).await.unwrap();
 }

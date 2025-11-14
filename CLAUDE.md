@@ -34,6 +34,9 @@ cargo run --bin cli -- --help
 # Run the API server (default port 3000)
 cargo run --bin server
 
+# Run the API server with Swagger UI documentation enabled
+cargo run --bin server -- --docs
+
 # Query price via API
 curl "http://localhost:3000/price?from=Amsterdam+Centraal&to=Utrecht+Centraal&class=2"
 ```
@@ -125,6 +128,15 @@ The HTTP API server exposes the following endpoints:
 
 **GET /health**
 - Returns: Simple health check response
+
+**Documentation (when --docs flag is enabled):**
+- **GET /docs**: Interactive Swagger UI documentation interface (similar to FastAPI's `/docs`)
+- **GET /docs/openapi.json**: OpenAPI 3.0 specification in JSON format
+
+To enable documentation, start the server with the `--docs` flag:
+```bash
+cargo run --bin server -- --docs
+```
 
 ### NS API Integration
 

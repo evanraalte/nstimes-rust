@@ -1,5 +1,6 @@
 mod commands;
 mod constants;
+mod prices;
 mod stations;
 mod trips;
 
@@ -22,6 +23,19 @@ enum Commands {
         /// Destination station name to search for
         to: String,
     },
+    /// Get price information for a trip
+    Price {
+        /// Start station name to search for
+        from: String,
+        /// Destination station name to search for
+        to: String,
+        /// Travel class: 1 for first class, 2 for second class (default: 2)
+        #[arg(long, value_parser = clap::value_parser!(u8).range(1..=2))]
+        class: Option<u8>,
+        /// Get price for return trip instead of single trip
+        #[arg(long)]
+        r#return: bool,
+    },
 }
 
 fn main() {
@@ -37,6 +51,21 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     match args.command {
         Commands::Trip { from, to } => commands::trip::execute(&from, &to)?,
+        Commands::Price {
+            from,
+            to,
+            class,
+            r#return,
+        } => {
+            let travel_class = class.map(|c| {
+                if c == 1 {
+                    "FIRST_CLASS".to_string()
+                } else {
+                    "SECOND_CLASS".to_string()
+                }
+            });
+            commands::price::execute(&from, &to, travel_class, r#return)?
+        }
     }
 
     Ok(())

@@ -13,6 +13,12 @@ NSTimes is a command-line tool for querying Dutch railway (NS) travel informatio
 # Run the trip command to find journeys between two stations
 cargo run trip "Den Haag C" "Amersfoort C"
 
+# Get price information for a trip (defaults to 2nd class, single trip)
+cargo run price "Den Haag C" "Amersfoort C"
+
+# Get price for 1st class return trip
+cargo run price "Den Haag C" "Amersfoort C" --class 1 --return
+
 # Build optimized release binary
 cargo build --release
 
@@ -22,6 +28,7 @@ cargo test
 # Show available commands and help
 cargo run -- --help
 cargo run trip --help
+cargo run price --help
 ```
 
 ### Environment Setup
@@ -36,12 +43,13 @@ Get a token from the [NS API portal](https://apiportal.ns.nl/signin) by creating
 
 ### Module Structure
 
-The codebase follows a modular architecture with four main components:
+The codebase follows a modular architecture with five main components:
 
 1. **`main.rs`** - Entry point using `clap` with subcommand support. Loads environment variables and routes commands to their respective handlers in the `commands/` module.
 
 2. **`commands/`** - Command implementations (one file per command)
    - `trip.rs`: Implements the `trip` command which queries journeys between two stations. Orchestrates station lookup and trip fetching.
+   - `price.rs`: Implements the `price` command which queries ticket prices. Supports optional flags for travel class (1st/2nd) and trip type (single/return).
 
 3. **`stations/`** - Station lookup and resolution
    - `models.rs`: Serde models for NS stations API responses (`Station`, `StationId`, `StationNames`)
@@ -58,7 +66,11 @@ The codebase follows a modular architecture with four main components:
      - Custom `Display` implementation formats trips with colored delays and strikethrough for cancelled trips
      - Only displays the first leg of each journey (direct trains)
 
-5. **`constants.rs`** - Contains `STATIONS` array with ~630 European station names mapped to UIC codes. This enables offline station lookup without API calls.
+5. **`prices/`** - Price information fetching and display
+   - `models.rs`: Serde models for NS prices API responses (`PriceApiResponse`, `PricesResponse`, `Price`)
+   - `service.rs`: `get_prices()` function queries the NS Price API with optional travel class and trip type parameters
+
+6. **`constants.rs`** - Contains `STATIONS` array with ~630 European station names mapped to UIC codes. This enables offline station lookup without API calls.
 
 ### Key Design Decisions
 
@@ -69,11 +81,12 @@ The codebase follows a modular architecture with four main components:
 
 ### API Integration
 
-The app integrates with two NS API endpoints:
+The app integrates with three NS API endpoints:
 1. **Stations API** (v3): `https://gateway.apiportal.ns.nl/nsapp-stations/v3` - queries stations (currently unused in favor of local lookup)
 2. **Trips API** (v3): `https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/trips` - fetches journey options between stations
+3. **Price API** (v3): `https://gateway.apiportal.ns.nl/reisinformatie-api/api/v3/price` - fetches ticket price information with options for travel class (1st/2nd), trip type (single/return), and passenger counts
 
-Both require the `Ocp-Apim-Subscription-Key` header with the NS API token.
+All require the `Ocp-Apim-Subscription-Key` header with the NS API token.
 
 ### Release Configuration
 

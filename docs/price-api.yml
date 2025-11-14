@@ -1,0 +1,224 @@
+/api/v3/price:
+    get:
+      tags:
+        - Prices
+      summary: Domestic prices
+      description: Returns price information for domestic trips
+      operationId: getPrices
+      parameters:
+        - name: fromStation
+          in: query
+          description: UicCode of the origin station (but station code is also still supported)
+          schema:
+            type: string
+          example: ut
+        - name: toStation
+          in: query
+          description: UicCode of the destination station (but station code is also still supported)
+          schema:
+            type: string
+          example: gn
+        - name: travelClass
+          in: query
+          description: Travel class to return the price for
+          schema:
+            enum:
+              - FIRST_CLASS
+              - SECOND_CLASS
+            type: string
+        - name: travelType
+          in: query
+          description: Return the price for a single or return trip. Defaults to single
+          schema:
+            enum:
+              - single
+              - return
+            type: string
+        - name: isJointJourney
+          in: query
+          description: Set to true to return the price including joint journey discount
+          schema:
+            type: boolean
+            default: false
+        - name: adults
+          in: query
+          description: Number of adults to return the price for. Defaults to 1
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: children
+          in: query
+          description: Number of children to return the price for. Defaults to 0
+          schema:
+            type: integer
+            format: int32
+            default: 0
+        - name: routeId
+          in: query
+          description: Specific identifier for the route to take between the two stations. This routeId is returned in the /api/v3/trips call.
+          schema:
+            type: string
+        - name: plannedDepartureTime
+          in: query
+          description: 'Planned departure time of the trip. Is used to find the correct route, if multiple routes are possible between the origin and destination station.'
+          schema:
+            type: string
+            format: date-time
+        - name: plannedArrivalTime
+          in: query
+          description: 'Planned arrival time of the trip. Is used to find the correct route, if multiple routes are possible between the origin and destination station.'
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Information about the price to pay given the input parameters
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RepresentationResponsePricesResponseV3'
+              examples:
+                default:
+                  value: 
+        '400':
+          description: Bad request. One or more parameters are invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+              example:
+                timestamp: string
+                code: 0
+                message: string
+                path: string
+                exception: string
+                errors:
+                  - message: string
+                    arguments:
+                      - { }
+                    type: string
+                    lang: string
+                requestId: string
+        '404':
+          description: Stationcode provided in the parameters could not be found or the price is unknown
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+              example:
+                timestamp: string
+                code: 0
+                message: string
+                path: string
+                exception: string
+                errors:
+                  - message: string
+                    arguments:
+                      - { }
+                    type: string
+                    lang: string
+                requestId: string
+
+# responses: 
+
+   PriceV3:
+      required:
+        - conditionsHeader
+        - discountType
+        - displayName
+        - isBestOption
+        - isSelectable
+        - pricePerAdultInCents
+        - pricePerChildInCents
+        - productId
+        - totalPriceInCents
+        - travelClass
+        - travelProducts
+      type: object
+      properties:
+        totalPriceInCents:
+          type: integer
+          description: Total price
+          format: int32
+        pricePerAdultInCents:
+          type: integer
+          description: Price per adult
+          format: int32
+        discountInCents:
+          type: integer
+          description: Discount price compared to total price without any discount
+          format: int32
+        operatorName:
+          type: string
+          description: Name of the operator
+        discountType:
+          enum:
+            - NONE
+            - EARLY_BOOKING
+            - GROUP
+            - JOINT_JOURNEY
+            - RAILRUNNER
+            - NS_DEAL
+          type: string
+          description: Type of discount
+        travelClass:
+          enum:
+            - FIRST_CLASS
+            - SECOND_CLASS
+          type: string
+          description: Traveling class
+        travelProducts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Unit'
+          description: Travel products types
+        isSelectable:
+          type: boolean
+          description: Denotes if the user can select this option
+        displayName:
+          type: string
+          description: Display name of product
+        conditionsHeader:
+          type: string
+          description: Header of conditions
+        conditionsText:
+          type: string
+          description: Conditions of product
+        conditionsUrl:
+          type: string
+          description: Url to webpage with common conditions
+        productId:
+          type: string
+          description: Product ID used to buy ticket
+        isBestOption:
+          type: boolean
+          description: Indicates if this price is the best option for client
+        pricePerChildInCents:
+          type: integer
+          description: Price per child
+          format: int32
+    PricesResponseV3:
+      required:
+        - prices
+      type: object
+      properties:
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceV3'
+    RepresentationResponsePricesResponseV3:
+      required:
+        - payload
+      type: object
+      properties:
+        payload:
+          $ref: '#/components/schemas/PricesResponseV3'
+        links:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Link'
+        meta:
+          type: object
+          additionalProperties:
+            type: object

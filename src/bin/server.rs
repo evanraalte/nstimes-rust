@@ -1,10 +1,11 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
+    http::{StatusCode, Method},
     response::{IntoResponse, Json},
     routing::get,
     Router,
 };
+use tower_http::cors::{CorsLayer, Any};
 use clap::Parser;
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
@@ -275,10 +276,17 @@ async fn main() {
 
     let state = AppState { cache };
 
+    // Configure CORS to allow requests from anywhere
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(Any);
+
     let mut app = Router::new()
         .route("/price", get(get_price))
         .route("/health", get(health_check))
-        .with_state(state);
+        .with_state(state)
+        .layer(cors);
 
     if args.docs {
         let swagger_ui = SwaggerUi::new("/docs")

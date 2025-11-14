@@ -1,28 +1,160 @@
+name: Release
+
 on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
-  release:
-    name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: x86_64-pc-windows-gnu
+        platform:
+          # Windows x64
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin_cli: cli.exe
+            bin_server: server.exe
             archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
-          - target: x86_64-apple-darwin
-            archive: zip
+
+          # Linux x64 (musl for static binary)
+          - name: Linux x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            bin_cli: cli
+            bin_server: server
+            archive: tar.gz
+
+          # Linux ARM64
+          - name: Linux ARM64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            bin_cli: cli
+            bin_server: server
+            archive: tar.gz
+
+          # macOS x64 (Intel)
+          - name: macOS x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bin_cli: cli
+            bin_server: server
+            archive: tar.gz
+
+          # macOS ARM64 (Apple Silicon)
+          - name: macOS ARM64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bin_cli: cli
+            bin_server: server
+            archive: tar.gz
+
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: evanraalte/rust-build.action@master
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+
+      - name: Install musl tools (Linux musl only)
+        if: contains(matrix.platform.target, 'musl')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Install cross-compilation tools (Linux ARM only)
+        if: matrix.platform.target == 'aarch64-unknown-linux-musl'
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build CLI (native)
+        if: matrix.platform.target != 'aarch64-unknown-linux-musl'
+        run: cargo build --release --bin cli --target ${{ matrix.platform.target }}
+
+      - name: Build Server (native)
+        if: matrix.platform.target != 'aarch64-unknown-linux-musl'
+        run: cargo build --release --bin server --target ${{ matrix.platform.target }}
+
+      - name: Build CLI (cross)
+        if: matrix.platform.target == 'aarch64-unknown-linux-musl'
+        run: cross build --release --bin cli --target ${{ matrix.platform.target }}
+
+      - name: Build Server (cross)
+        if: matrix.platform.target == 'aarch64-unknown-linux-musl'
+        run: cross build --release --bin server --target ${{ matrix.platform.target }}
+
+      - name: Create release directory
+        shell: bash
+        run: |
+          mkdir -p release
+          cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin_cli }} release/nstimes-cli || true
+          cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin_server }} release/nstimes-server || true
+          cp README.md release/ || true
+          cp LICENSE release/ || true
+
+      - name: Create archive (tar.gz)
+        if: matrix.platform.archive == 'tar.gz'
+        shell: bash
+        run: |
+          cd release
+          tar czf ../nstimes-${{ matrix.platform.target }}.tar.gz *
+
+      - name: Create archive (zip)
+        if: matrix.platform.archive == 'zip'
+        shell: bash
+        run: |
+          cd release
+          7z a ../nstimes-${{ matrix.platform.target }}.zip *
+
+      - name: Upload release archive
+        uses: softprops/action-gh-release@v2
+        with:
+          files: nstimes-${{ matrix.platform.target }}.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-assets:
+    name: Package Docker Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create docker assets directory
+        run: |
+          mkdir -p docker-assets
+          cp docker-compose.yml docker-assets/
+          cp Dockerfile docker-assets/
+          cp .env.example docker-assets/
+          cp README.md docker-assets/
+          cp CLAUDE.md docker-assets/
+          echo "# NSTimes Docker Deployment" > docker-assets/DOCKER_SETUP.md
+          echo "" >> docker-assets/DOCKER_SETUP.md
+          echo "## Quick Start" >> docker-assets/DOCKER_SETUP.md
+          echo "" >> docker-assets/DOCKER_SETUP.md
+          echo "1. Copy .env.example to .env and add your NS_API_TOKEN" >> docker-assets/DOCKER_SETUP.md
+          echo "2. Run: docker compose up -d" >> docker-assets/DOCKER_SETUP.md
+          echo "3. Access API at http://localhost:3000" >> docker-assets/DOCKER_SETUP.md
+          echo "4. View docs at http://localhost:3000/docs (if --docs flag is enabled)" >> docker-assets/DOCKER_SETUP.md
+          echo "" >> docker-assets/DOCKER_SETUP.md
+          echo "See CLAUDE.md for detailed documentation." >> docker-assets/DOCKER_SETUP.md
+
+      - name: Create docker assets archive
+        run: |
+          cd docker-assets
+          tar czf ../nstimes-docker-assets.tar.gz *
+
+      - name: Upload docker assets
+        uses: softprops/action-gh-release@v2
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
-          TOOLCHAIN_VERSION: stable
+          files: nstimes-docker-assets.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
